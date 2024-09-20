@@ -45,6 +45,7 @@ public class ArrayMetric implements Metric {
         if (enableOccupy) {
             this.data = new OccupiableBucketLeapArray(sampleCount, intervalInMs);
         } else {
+            //当前启用
             this.data = new BucketLeapArray(sampleCount, intervalInMs);
         }
     }
@@ -71,9 +72,11 @@ public class ArrayMetric implements Metric {
     @Override
     public long maxSuccess() {
         data.currentWindow();
+
         long success = 0;
 
         List<MetricBucket> list = data.values();
+
         for (MetricBucket window : list) {
             if (window.success() > success) {
                 success = window.success();
@@ -107,7 +110,9 @@ public class ArrayMetric implements Metric {
     @Override
     public long pass() {
         data.currentWindow();
+
         long pass = 0;
+
         List<MetricBucket> list = data.values();
 
         for (MetricBucket window : list) {
@@ -155,8 +160,11 @@ public class ArrayMetric implements Metric {
     @Override
     public List<MetricNode> details() {
         List<MetricNode> details = new ArrayList<>();
+
         data.currentWindow();
+
         List<WindowWrap<MetricBucket>> list = data.list();
+
         for (WindowWrap<MetricBucket> window : list) {
             if (window == null) {
                 continue;
@@ -236,12 +244,16 @@ public class ArrayMetric implements Metric {
     @Override
     public void addSuccess(int count) {
         WindowWrap<MetricBucket> wrap = data.currentWindow();
+
         wrap.value().addSuccess(count);
     }
 
     @Override
     public void addPass(int count) {
+        //获取当前窗口
         WindowWrap<MetricBucket> wrap = data.currentWindow();
+
+        //在当前窗口值加1
         wrap.value().addPass(count);
     }
 
@@ -259,10 +271,13 @@ public class ArrayMetric implements Metric {
     @Override
     public long previousWindowBlock() {
         data.currentWindow();
+
         WindowWrap<MetricBucket> wrap = data.getPreviousWindow();
+
         if (wrap == null) {
             return 0;
         }
+
         return wrap.value().block();
     }
 

@@ -115,11 +115,13 @@ public class WarmUpController implements TrafficShapingController {
         long passQps = (long) node.passQps();
 
         long previousQps = (long) node.previousPassQps();
+
         syncToken(previousQps);
 
         // 开始计算它的斜率
         // 如果进入了警戒线，开始调整他的qps
         long restToken = storedTokens.get();
+
         if (restToken >= warningToken) {
             long aboveToken = restToken - warningToken;
             // 消耗的速度要比warning快，但是要比慢

@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.LongAdder;
  */
 public class MetricBucket {
 
+    //统计多维度的数据，PASS,BLOCK 等
     private final LongAdder[] counters;
 
     private volatile long minRt;

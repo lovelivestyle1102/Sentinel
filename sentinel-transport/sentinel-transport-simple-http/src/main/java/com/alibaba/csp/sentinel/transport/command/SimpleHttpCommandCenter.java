@@ -66,6 +66,7 @@ public class SimpleHttpCommandCenter implements CommandCenter {
     @SuppressWarnings("rawtypes")
     public void beforeStart() throws Exception {
         // Register handlers
+        //通过SPI机制获取到所有的CommandHandler实例，并保存到map中。通过@CommandMapping注解指定key名称，CommanHandler作为value
         Map<String, CommandHandler> handlers = CommandHandlerProvider.getInstance().namedHandlers();
         registerCommands(handlers);
     }
@@ -73,6 +74,8 @@ public class SimpleHttpCommandCenter implements CommandCenter {
     @Override
     public void start() throws Exception {
         int nThreads = Runtime.getRuntime().availableProcessors();
+
+        //创建一个cpu线程数大小的固定线程池
         this.bizExecutor = new ThreadPoolExecutor(nThreads, nThreads, 0L, TimeUnit.MILLISECONDS,
             new ArrayBlockingQueue<Runnable>(10),
             new NamedThreadFactory("sentinel-command-center-service-executor", true),
@@ -84,6 +87,7 @@ public class SimpleHttpCommandCenter implements CommandCenter {
                 }
             });
 
+        //开启服务线程创建ServerSocket绑定端口，默认8719，实时监听sentinel-dashboard发送的请求
         Runnable serverInitTask = new Runnable() {
             int port;
 

@@ -118,6 +118,7 @@ public class FlowRuleManager {
      * @param rules new rules to load.
      */
     public static void loadRules(List<FlowRule> rules) {
+        //调用DynamicSentinelProperty更新内存
         currentProperty.updateValue(rules);
     }
 
@@ -151,6 +152,7 @@ public class FlowRuleManager {
 
         @Override
         public synchronized void configUpdate(List<FlowRule> value) {
+            //清掉内存中旧的流控规则，保存新的流程控制规则
             Map<String, List<FlowRule>> rules = FlowRuleUtil.buildFlowRuleMap(value);
             if (rules != null) {
                 flowRules = rules;

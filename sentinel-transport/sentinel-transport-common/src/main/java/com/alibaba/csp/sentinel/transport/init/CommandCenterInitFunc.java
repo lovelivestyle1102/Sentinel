@@ -29,6 +29,7 @@ public class CommandCenterInitFunc implements InitFunc {
 
     @Override
     public void init() throws Exception {
+        //通过SPI加载SimpleHttpCommandCenter
         CommandCenter commandCenter = CommandCenterProvider.getCommandCenter();
 
         if (commandCenter == null) {
@@ -37,7 +38,9 @@ public class CommandCenterInitFunc implements InitFunc {
         }
 
         commandCenter.beforeStart();
+
         commandCenter.start();
+
         RecordLog.info("[CommandCenterInit] Starting command center: "
                 + commandCenter.getClass().getCanonicalName());
     }

@@ -100,13 +100,22 @@ public abstract class AbstractSentinelInterceptor implements HandlerInterceptor 
             
             // Parse the request origin using registered origin parser.
             String origin = parseOrigin(request);
+
+            //获取上下文名称
             String contextName = getContextName(request);
+
+            //尝试从ThreadLocal获取，如果没有则创建上下文
             ContextUtil.enter(contextName, origin);
+
+            //进入流控
             Entry entry = SphU.entry(resourceName, ResourceTypeConstants.COMMON_WEB, EntryType.IN);
+
             request.setAttribute(baseWebMvcConfig.getRequestAttributeName(), entry);
+
             return true;
         } catch (BlockException e) {
             try {
+                //异常处理
                 handleBlockException(request, response, e);
             } finally {
                 ContextUtil.exit();
@@ -149,7 +158,9 @@ public abstract class AbstractSentinelInterceptor implements HandlerInterceptor 
         }
         
         traceExceptionAndExit(entry, ex);
+
         removeEntryInRequest(request);
+
         ContextUtil.exit();
     }
 

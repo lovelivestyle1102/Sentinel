@@ -32,6 +32,12 @@ public class BucketLeapArray extends LeapArray<MetricBucket> {
         super(sampleCount, intervalInMs);
     }
 
+    /**
+     * 多种度量溶于一身
+     *
+     * @param time
+     * @return
+     */
     @Override
     public MetricBucket newEmptyBucket(long time) {
         return new MetricBucket();

@@ -407,6 +407,8 @@ public final class SpiLoader<S> {
         }
 
         sortedClassList.addAll(classList);
+
+        //对ProcessorSlot列表进行排序
         Collections.sort(sortedClassList, new Comparator<Class<? extends S>>() {
             @Override
             public int compare(Class<? extends S> o1, Class<? extends S> o2) {

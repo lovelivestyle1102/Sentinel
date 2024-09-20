@@ -53,6 +53,8 @@ public abstract class LeapArray<T> {
     private final ReentrantLock updateLock = new ReentrantLock();
 
     /**
+     * 当前注释为分钟级的，秒级的会有不同
+     *
      * The total bucket count is: {@code sampleCount = intervalInMs / windowLengthInMs}.
      *
      * @param sampleCount  bucket count of the sliding window
@@ -63,11 +65,20 @@ public abstract class LeapArray<T> {
         AssertUtil.isTrue(intervalInMs > 0, "total time interval of the sliding window should be positive");
         AssertUtil.isTrue(intervalInMs % sampleCount == 0, "time span needs to be evenly divided");
 
+
+        //1000ms
         this.windowLengthInMs = intervalInMs / sampleCount;
+
+        //60 * 1000
         this.intervalInMs = intervalInMs;
+
+        //60
         this.intervalInSecond = intervalInMs / 1000.0;
+
+        //60
         this.sampleCount = sampleCount;
 
+        //创建60大小的数组，用于保存最近60秒内的数据。循环使用，超过的会覆盖
         this.array = new AtomicReferenceArray<>(sampleCount);
     }
 
@@ -119,6 +130,7 @@ public abstract class LeapArray<T> {
         }
 
         int idx = calculateTimeIdx(timeMillis);
+
         // Calculate current bucket start time.
         long windowStart = calculateWindowStart(timeMillis);
 
@@ -131,6 +143,8 @@ public abstract class LeapArray<T> {
          */
         while (true) {
             WindowWrap<T> old = array.get(idx);
+
+
             if (old == null) {
                 /*
                  *     B0       B1      B2    NULL      B4
@@ -145,6 +159,7 @@ public abstract class LeapArray<T> {
                  * succeed to update, while other threads yield its time slice.
                  */
                 WindowWrap<T> window = new WindowWrap<T>(windowLengthInMs, windowStart, newEmptyBucket(timeMillis));
+
                 if (array.compareAndSet(idx, null, window)) {
                     // Successfully updated, return the created bucket.
                     return window;
@@ -211,8 +226,12 @@ public abstract class LeapArray<T> {
         if (timeMillis < 0) {
             return null;
         }
+
+        //前一个窗口
         int idx = calculateTimeIdx(timeMillis - windowLengthInMs);
+
         timeMillis = timeMillis - windowLengthInMs;
+
         WindowWrap<T> wrap = array.get(idx);
 
         if (wrap == null || isWindowDeprecated(wrap)) {
@@ -283,6 +302,7 @@ public abstract class LeapArray<T> {
 
     public List<WindowWrap<T>> list(long validTime) {
         int size = array.length();
+
         List<WindowWrap<T>> result = new ArrayList<WindowWrap<T>>(size);
 
         for (int i = 0; i < size; i++) {
@@ -330,14 +350,19 @@ public abstract class LeapArray<T> {
         if (timeMillis < 0) {
             return new ArrayList<T>();
         }
+
         int size = array.length();
+
         List<T> result = new ArrayList<T>(size);
 
         for (int i = 0; i < size; i++) {
             WindowWrap<T> windowWrap = array.get(i);
+
+            //统计未过期的数据
             if (windowWrap == null || isWindowDeprecated(timeMillis, windowWrap)) {
                 continue;
             }
+
             result.add(windowWrap.value());
         }
         return result;

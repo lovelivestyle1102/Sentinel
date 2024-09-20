@@ -291,6 +291,8 @@ public class SphU {
      * @since 1.7.0
      */
     public static Entry entry(String name, int resourceType, EntryType trafficType) throws BlockException {
+        //第一次执行，会调用Env静态方法InitExecutor.doInit()
+        //通过SPI加载InitFunc实例类
         return Env.sph.entryWithType(name, resourceType, trafficType, 1, OBJECTS0);
     }
 

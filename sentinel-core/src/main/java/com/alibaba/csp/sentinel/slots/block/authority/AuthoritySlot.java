@@ -55,6 +55,7 @@ public class AuthoritySlot extends AbstractLinkedProcessorSlot<DefaultNode> {
         }
 
         Set<AuthorityRule> rules = authorityRules.get(resource.getName());
+
         if (rules == null) {
             return;
         }

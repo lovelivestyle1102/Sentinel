@@ -64,6 +64,7 @@ public class DegradeSlot extends AbstractLinkedProcessorSlot<DefaultNode> {
             fireExit(context, r, count, args);
             return;
         }
+
         List<CircuitBreaker> circuitBreakers = DegradeRuleManager.getCircuitBreakers(r.getName());
         if (circuitBreakers == null || circuitBreakers.isEmpty()) {
             fireExit(context, r, count, args);

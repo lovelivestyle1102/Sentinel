@@ -55,6 +55,7 @@ public class RateLimiterController implements TrafficShapingController {
         }
 
         long currentTime = TimeUtil.currentTimeMillis();
+
         // Calculate the interval between every two requests.
         long costTime = Math.round(1.0 * (acquireCount) / count * 1000);
 

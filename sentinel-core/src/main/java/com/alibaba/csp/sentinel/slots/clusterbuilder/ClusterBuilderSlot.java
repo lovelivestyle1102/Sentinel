@@ -90,6 +90,8 @@ public class ClusterBuilderSlot extends AbstractLinkedProcessorSlot<DefaultNode>
                 }
             }
         }
+
+        //设置clusterNode
         node.setClusterNode(clusterNode);
 
         /*

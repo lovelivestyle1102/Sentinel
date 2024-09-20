@@ -192,10 +192,13 @@ public final class TimeUtil implements Runnable {
 
     private long currentTime(boolean innerCall) {
         long now = this.currentTimeMillis;
+
         Statistic val = this.statistics.currentWindow(now).value();
+
         if (!innerCall) {
             val.getReads().increment();
         }
+
         if (this.state == STATE.IDLE || this.state == STATE.PREPARE) {
             now = System.currentTimeMillis();
             this.currentTimeMillis = now;

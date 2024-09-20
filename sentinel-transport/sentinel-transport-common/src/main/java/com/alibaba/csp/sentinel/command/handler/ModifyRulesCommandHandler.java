@@ -47,6 +47,7 @@ import static com.alibaba.csp.sentinel.transport.util.WritableDataSourceRegistry
 public class ModifyRulesCommandHandler implements CommandHandler<String> {
     private static final int FASTJSON_MINIMAL_VER = 0x01020C00;
 
+    //获取规则类型和数据，类型用于判断规则类型，包括：流控，授权，降级，系统规则
     @Override
     public CommandResponse<String> handle(CommandRequest request) {
         // XXX from 1.7.2, force to fail when fastjson is older than 1.2.12
@@ -56,6 +57,8 @@ public class ModifyRulesCommandHandler implements CommandHandler<String> {
             return CommandResponse.ofFailure(new RuntimeException("The \"fastjson-" + JSON.VERSION
                     + "\" introduced in application is too old, you need fastjson-1.2.12 at least."));
         }
+
+        //类型
         String type = request.getParam("type");
         // rule data in get parameter
         String data = request.getParam("data");
@@ -74,10 +77,15 @@ public class ModifyRulesCommandHandler implements CommandHandler<String> {
 
         if (FLOW_RULE_TYPE.equalsIgnoreCase(type)) {
             List<FlowRule> flowRules = JSONArray.parseArray(data, FlowRule.class);
+
+            //加载到本地内存
             FlowRuleManager.loadRules(flowRules);
+
+            //写入数据源
             if (!writeToDataSource(getFlowDataSource(), flowRules)) {
                 result = WRITE_DS_FAILURE_MSG;
             }
+
             return CommandResponse.ofSuccess(result);
         } else if (AUTHORITY_RULE_TYPE.equalsIgnoreCase(type)) {
             List<AuthorityRule> rules = JSONArray.parseArray(data, AuthorityRule.class);
@@ -115,6 +123,8 @@ public class ModifyRulesCommandHandler implements CommandHandler<String> {
     private <T> boolean writeToDataSource(WritableDataSource<T> dataSource, T value) {
         if (dataSource != null) {
             try {
+                //在sentinel-datasource-extension.jar包中实现
+                //持久化到本地文件
                 dataSource.write(value);
             } catch (Exception e) {
                 RecordLog.warn("Write data source failed", e);

@@ -37,6 +37,7 @@ final class AuthorityRuleChecker {
 
         // Do exact match with origin name.
         int pos = rule.getLimitApp().indexOf(requester);
+
         boolean contain = pos > -1;
 
         if (contain) {
@@ -53,6 +54,7 @@ final class AuthorityRuleChecker {
         }
 
         int strategy = rule.getStrategy();
+
         if (strategy == RuleConstant.AUTHORITY_BLACK && contain) {
             return false;
         }

@@ -371,6 +371,7 @@ public final class ClusterFlowRuleManager {
         });
 
         FLOW_RULES.putAll(ruleMap);
+
         NAMESPACE_FLOW_ID_MAP.put(namespace, flowIdSet);
     }
 

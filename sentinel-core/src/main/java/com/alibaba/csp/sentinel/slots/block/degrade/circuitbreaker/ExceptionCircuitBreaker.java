@@ -74,6 +74,7 @@ public class ExceptionCircuitBreaker extends AbstractCircuitBreaker {
         }
         counter.getTotalCount().add(1);
 
+        //状态转变方法
         handleStateChangeWhenThresholdExceeded(error);
     }
 

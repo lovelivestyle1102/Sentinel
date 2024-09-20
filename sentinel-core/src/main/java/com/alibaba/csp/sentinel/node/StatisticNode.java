@@ -90,6 +90,8 @@ import com.alibaba.csp.sentinel.util.function.Predicate;
 public class StatisticNode implements Node {
 
     /**
+     * 秒级的
+     *
      * Holds statistics of the recent {@code INTERVAL} milliseconds. The {@code INTERVAL} is divided into time spans
      * by given {@code sampleCount}.
      */
@@ -97,6 +99,10 @@ public class StatisticNode implements Node {
         IntervalProperty.INTERVAL);
 
     /**
+     * 采用活动窗口，保存最近60秒内的数据。
+     * 每个窗口大小为1000ms，意思也就是1秒
+     *
+     *
      * Holds statistics of the recent 60 seconds. The windowLengthInMs is deliberately set to 1000 milliseconds,
      * meaning each bucket per second, in this way we can get accurate statistics of each second.
      */
@@ -116,10 +122,15 @@ public class StatisticNode implements Node {
     public Map<Long, MetricNode> metrics() {
         // The fetch operation is thread-safe under a single-thread scheduler pool.
         long currentTime = TimeUtil.currentTimeMillis();
+
         currentTime = currentTime - currentTime % 1000;
+
         Map<Long, MetricNode> metrics = new ConcurrentHashMap<>();
+
         List<MetricNode> nodesOfEverySecond = rollingCounterInMinute.details();
+
         long newLastFetchTime = lastFetchTime;
+
         // Iterate metrics of all resources, filter valid metrics (not-empty and up-to-date).
         for (MetricNode node : nodesOfEverySecond) {
             if (isNodeInTime(node, currentTime) && isValidMetricNode(node)) {
@@ -127,6 +138,7 @@ public class StatisticNode implements Node {
                 newLastFetchTime = Math.max(newLastFetchTime, node.getTimestamp());
             }
         }
+
         lastFetchTime = newLastFetchTime;
 
         return metrics;

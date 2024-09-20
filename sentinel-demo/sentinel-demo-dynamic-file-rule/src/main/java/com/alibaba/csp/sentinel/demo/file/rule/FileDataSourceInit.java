@@ -43,6 +43,10 @@ import com.alibaba.fastjson.TypeReference;
  */
 public class FileDataSourceInit implements InitFunc {
 
+    //利用InitFunc扩展实现FileDataSource初始化逻辑：
+    //当用户访问sentinel资源时，会初始化此模块，从本地文件加载sentinel规则
+    //当文件配置发生变更时，利用读数据源监听配置规则的变化，将配置更新到内存
+    //当sentinel控制台推送规则是，利用写数据源将配置更新到规则文件
     @Override
     public void init() throws Exception {
         // A fake path.
@@ -53,6 +57,7 @@ public class FileDataSourceInit implements InitFunc {
         ReadableDataSource<String, List<FlowRule>> ds = new FileRefreshableDataSource<>(
             flowRulePath, source -> JSON.parseObject(source, new TypeReference<List<FlowRule>>() {})
         );
+
         // Register to flow rule manager.
         FlowRuleManager.register2Property(ds.getProperty());
 

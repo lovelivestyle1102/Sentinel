@@ -37,6 +37,7 @@ public class WindowWrap<T> {
     /**
      * Statistic data.
      */
+    //此类型为MetricBucket
     private T value;
 
     /**

@@ -15,9 +15,11 @@
  */
 package com.alibaba.csp.sentinel.dashboard.metric;
 
+import java.io.*;
 import java.net.ConnectException;
 import java.net.SocketTimeoutException;
 import java.nio.charset.Charset;
+import java.nio.charset.UnsupportedCharsetException;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
@@ -46,8 +48,12 @@ import com.alibaba.csp.sentinel.node.metric.MetricNode;
 import com.alibaba.csp.sentinel.util.StringUtil;
 
 import com.alibaba.csp.sentinel.dashboard.repository.metric.MetricsRepository;
+import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
+import org.apache.http.ParseException;
+import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
 import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.entity.ContentType;
 import org.apache.http.impl.client.DefaultRedirectStrategy;
@@ -55,11 +61,19 @@ import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
 import org.apache.http.impl.nio.client.HttpAsyncClients;
 import org.apache.http.impl.nio.reactor.IOReactorConfig;
 import org.apache.http.protocol.HTTP;
+import org.apache.http.util.Args;
+import org.apache.http.util.CharArrayBuffer;
 import org.apache.http.util.EntityUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.client.ClientHttpRequest;
+import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.RequestCallback;
+import org.springframework.web.client.ResponseExtractor;
+import org.springframework.web.client.RestTemplate;
 
 /**
  * Fetch metric of machines.
@@ -76,21 +90,27 @@ public class MetricFetcher {
     private static final Charset DEFAULT_CHARSET = Charset.forName(SentinelConfig.charset());
     private final static String METRIC_URL_PATH = "metric";
     private static Logger logger = LoggerFactory.getLogger(MetricFetcher.class);
-    private final long intervalSecond = 1;
+    private final long intervalSecond = 2;
 
     private Map<String, AtomicLong> appLastFetchTime = new ConcurrentHashMap<>();
 
     @Autowired
     private MetricsRepository<MetricEntity> metricStore;
+
     @Autowired
     private AppManagement appManagement;
 
-    private CloseableHttpAsyncClient httpclient;
+    @Autowired
+    private RestTemplate restTemplate;
+
+//    private CloseableHttpAsyncClient httpclient;
 
     @SuppressWarnings("PMD.ThreadPoolCreationRule")
     private ScheduledExecutorService fetchScheduleService = Executors.newScheduledThreadPool(1,
         new NamedThreadFactory("sentinel-dashboard-metrics-fetch-task", true));
+
     private ExecutorService fetchService;
+
     private ExecutorService fetchWorker;
 
     public MetricFetcher() {
@@ -98,29 +118,15 @@ public class MetricFetcher {
         long keepAliveTime = 0;
         int queueSize = 2048;
         RejectedExecutionHandler handler = new DiscardPolicy();
+
         fetchService = new ThreadPoolExecutor(cores, cores,
             keepAliveTime, TimeUnit.MILLISECONDS, new ArrayBlockingQueue<>(queueSize),
             new NamedThreadFactory("sentinel-dashboard-metrics-fetchService", true), handler);
+
         fetchWorker = new ThreadPoolExecutor(cores, cores,
             keepAliveTime, TimeUnit.MILLISECONDS, new ArrayBlockingQueue<>(queueSize),
             new NamedThreadFactory("sentinel-dashboard-metrics-fetchWorker",true), handler);
-        IOReactorConfig ioConfig = IOReactorConfig.custom()
-            .setConnectTimeout(3000)
-            .setSoTimeout(3000)
-            .setIoThreadCount(Runtime.getRuntime().availableProcessors() * 2)
-            .build();
 
-        httpclient = HttpAsyncClients.custom()
-            .setRedirectStrategy(new DefaultRedirectStrategy() {
-                @Override
-                protected boolean isRedirectable(final String method) {
-                    return false;
-                }
-            }).setMaxConnTotal(4000)
-            .setMaxConnPerRoute(1000)
-            .setDefaultIOReactorConfig(ioConfig)
-            .build();
-        httpclient.start();
         start();
     }
 
@@ -209,40 +215,38 @@ public class MetricFetcher {
             }
             final String url = "http://" + machine.getIp() + ":" + machine.getPort() + "/" + METRIC_URL_PATH
                 + "?startTime=" + startTime + "&endTime=" + endTime + "&refetch=" + false;
-            final HttpGet httpGet = new HttpGet(url);
-            httpGet.setHeader(HTTP.CONN_DIRECTIVE, HTTP.CONN_CLOSE);
-            httpclient.execute(httpGet, new FutureCallback<HttpResponse>() {
+
+            CloseableHttpAsyncClient client = HttpAsyncClients.createDefault();
+
+
+            restTemplate.execute(url, HttpMethod.GET, new RequestCallback() {
                 @Override
-                public void completed(final HttpResponse response) {
+                public void doWithRequest(ClientHttpRequest request) throws IOException {
+
+                }
+            }, new ResponseExtractor<MetricEntity>() {
+                @Override
+                public MetricEntity extractData(ClientHttpResponse response) throws IOException {
+                    int code = response.getStatusCode().value();
+                    if (code != HTTP_OK) {
+                        throw new RuntimeException("请求失败！");
+                    }
+                    Charset charset = null;
                     try {
-                        handleResponse(response, machine, metricMap);
-                        success.incrementAndGet();
-                    } catch (Exception e) {
-                        logger.error(msg + " metric " + url + " error:", e);
-                    } finally {
-                        latch.countDown();
+                        String contentTypeStr = response.getHeaders().getFirst("Content-type");
+                        if (StringUtil.isNotEmpty(contentTypeStr)) {
+                            ContentType contentType = ContentType.parse(contentTypeStr);
+                            charset = contentType.getCharset();
+                        }
+                    } catch (Exception ignore) {
                     }
-                }
-
-                @Override
-                public void failed(final Exception ex) {
-                    latch.countDown();
-                    fail.incrementAndGet();
-                    httpGet.abort();
-                    if (ex instanceof SocketTimeoutException) {
-                        logger.error("Failed to fetch metric from <{}>: socket timeout", url);
-                    } else if (ex instanceof ConnectException) {
-                        logger.error("Failed to fetch metric from <{}> (ConnectionException: {})", url, ex.getMessage());
-                    } else {
-                        logger.error(msg + " metric " + url + " error", ex);
+                    String body = responseToString(response.getBody(), charset != null ? charset : DEFAULT_CHARSET, (int) response.getHeaders().getContentLength());
+                    if (StringUtil.isEmpty(body) || body.startsWith(NO_METRICS)) {
+                        throw new RuntimeException("获取响应失败");
                     }
-                }
-
-                @Override
-                public void cancelled() {
-                    latch.countDown();
-                    fail.incrementAndGet();
-                    httpGet.abort();
+                    String[] lines = body.split("\n");
+                    handleBody(lines, machine, metricMap);
+                    return null;
                 }
             });
         }
@@ -256,6 +260,29 @@ public class MetricFetcher {
         //    + "], total machines=" + machines.size() + ", dead=" + dead + ", fetch success="
         //    + success + ", fetch fail=" + fail + ", time cost=" + cost + " ms");
         writeMetric(metricMap);
+    }
+
+
+    public static String responseToString(InputStream instream, Charset defaultCharset,int length) throws IOException, ParseException {
+            try {
+                if (length < 0) {
+                    length = 4096;
+                }
+
+                Reader reader = new InputStreamReader(instream, defaultCharset);
+                CharArrayBuffer buffer = new CharArrayBuffer(length);
+                char[] tmp = new char[1024];
+
+                int l;
+                while((l = reader.read(tmp)) != -1) {
+                    buffer.append(tmp, 0, l);
+                }
+
+                String var9 = buffer.toString();
+                return var9;
+            } finally {
+                instream.close();
+            }
     }
 
     private void doFetchAppMetric(final String app) {

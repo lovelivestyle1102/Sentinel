@@ -15,6 +15,7 @@
  */
 package com.alibaba.csp.sentinel.demo.annotation.aop.config;
 
+
 import com.alibaba.csp.sentinel.annotation.aspectj.SentinelResourceAspect;
 
 import org.springframework.context.annotation.Bean;

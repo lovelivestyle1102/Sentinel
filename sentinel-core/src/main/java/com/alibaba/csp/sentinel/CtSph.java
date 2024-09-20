@@ -116,6 +116,7 @@ public class CtSph implements Sph {
 
     private Entry entryWithPriority(ResourceWrapper resourceWrapper, int count, boolean prioritized, Object... args)
         throws BlockException {
+        //获取上下文Context
         Context context = ContextUtil.getContext();
         if (context instanceof NullContext) {
             // The {@link NullContext} indicates that the amount of context has exceeded the threshold,
@@ -133,6 +134,7 @@ public class CtSph implements Sph {
             return new CtEntry(resourceWrapper, null, context);
         }
 
+        //获取到ProcessorSlot chain
         ProcessorSlot<Object> chain = lookProcessChain(resourceWrapper);
 
         /*
@@ -202,11 +204,16 @@ public class CtSph implements Sph {
                         return null;
                     }
 
+                    //利用SPI机制加载ProcessorSlot
                     chain = SlotChainProvider.newSlotChain();
+
                     Map<ResourceWrapper, ProcessorSlotChain> newMap = new HashMap<ResourceWrapper, ProcessorSlotChain>(
                         chainMap.size() + 1);
+
                     newMap.putAll(chainMap);
+
                     newMap.put(resourceWrapper, chain);
+
                     chainMap = newMap;
                 }
             }
